@@ -107,6 +107,10 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
     return str;
 }
 
+
+extern const uint8_t data_bin_start[] asm("_binary_data_bin_start");
+extern const uint8_t data_bin_end[]   asm("_binary_data_bin_end");
+
 void app_main(void)
 {
     // Initialize NVS.
@@ -120,6 +124,13 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_BLE));
 
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+
+
+    size_t data_size = data_bin_end - data_bin_start;
+
+    ESP_LOGE(BT_AV_TAG, "GOT size: %d first bytes:%d,%d,%d", data_size, data_bin_start[0],data_bin_start[1],data_bin_start[2]);
+
+
 
     if (esp_bt_controller_init(&bt_cfg) != ESP_OK) {
         ESP_LOGE(BT_AV_TAG, "%s initialize controller failed\n", __func__);
