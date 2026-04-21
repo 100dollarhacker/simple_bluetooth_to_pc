@@ -409,7 +409,7 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
         data[(i << 1) + 1] = data_bin_start[index+(2*i+1)] & 0xff;
     }
 
-    index = (index + len) % 150000;
+    index = (index + len) % (330000/2);
 
 
     return len;
