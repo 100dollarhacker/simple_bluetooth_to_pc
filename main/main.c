@@ -389,20 +389,28 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
     bt_app_work_dispatch(bt_app_av_sm_hdlr, event, param, sizeof(esp_a2d_cb_param_t), NULL);
 }
 
+
+//    size_t data_size = data_bin_end - data_bin_start;
 static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
 {
     if (len < 0 || data == NULL) {
         return 0;
     }
 
+    static size_t index = 0;
+
+
     // generate random sequence
-    int val = rand() % (1 << 16);
+    // int val = rand() % (1 << 16);
     for (int i = 0; i < (len >> 1); i++) {
         //data[(i << 1)] = val & 0xff;
         //data[(i << 1) + 1] = (val >> 8) & 0xff;
-        data[(i << 1)] = i & 0xff;
-        data[(i << 1) + 1] = (i+128) & 0xff;
+        data[(i << 1)] = data_bin_start[index+2*i] & 0xff;
+        data[(i << 1) + 1] = data_bin_start[index+(2*i+1)] & 0xff;
     }
+
+    index = (index + len) % 150000;
+
 
     return len;
 }
