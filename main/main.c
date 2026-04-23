@@ -411,7 +411,7 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
     //ESP_LOGI(BT_AV_TAG, "DATA2: %d:%d", (val >> 8) & 0xff , val & 0xff );
     // generate random sequence
     // int val = rand() % (1 << 16);
-    for ( i = 0; i < (len >> 1); i++) {
+    for ( i = 0; i < (len >> 2); i++) {
         //data[(i << 1)] = val & 0xff;
         //data[(i << 1) + 1] = (val >> 8) & 0xff;
 
@@ -419,8 +419,10 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
 
         val = data_bin_start[index+2*i + 1] *256 + data_bin_start[index+2*i] ;
         val = val / (1 << sample_num) ; 
-        data[(i << 1)+ 1] = (val >> 8) & 0xff ;
-        data[(i << 1) ] = val & 0xff;
+        data[(i << 2)+ 1] = (val >> 8) & 0xff ;
+        data[(i << 2) ] = val & 0xff;
+        data[(i << 2)+ 3] = (val >> 8) & 0xff ;
+        data[(i << 2)+2] = val & 0xff;
         //data[(i << 1)] = data_bin_start[index+2*i] & 0xff;
         //data[(i << 1) + 1] = data_bin_start[index+(2*i+1)] & 0xff;
     }
