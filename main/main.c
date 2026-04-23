@@ -401,14 +401,14 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
     static size_t index = 0;
     size_t index_before;
     int i = 0;
-    int16_t val ;
-    ESP_LOGI(BT_AV_TAG, "DATA0: %d:%d", data_bin_start[index+2*i], data_bin_start[index+2*i + 1]);
+    int16_t val = 1;
+    //ESP_LOGI(BT_AV_TAG, "DATA0: %d:%d", data_bin_start[index+2*i], data_bin_start[index+2*i + 1]);
     
     val = data_bin_start[index+2*i + 1] * 256 + data_bin_start[index+2*i] ;
-    ESP_LOGI(BT_AV_TAG, "VAL0 : %d  sample:%d", val, sample_num);
+    //ESP_LOGI(BT_AV_TAG, "VAL0 : %d  sample:%d", val, sample_num);
     val = val / 2;// (1 << sample_num) ; 
-    ESP_LOGI(BT_AV_TAG, "VAL2 : %d", val);
-    ESP_LOGI(BT_AV_TAG, "DATA2: %d:%d", (val >> 8) & 0xff , val & 0xff );
+    //ESP_LOGI(BT_AV_TAG, "VAL2 : %d", val);
+    //ESP_LOGI(BT_AV_TAG, "DATA2: %d:%d", (val >> 8) & 0xff , val & 0xff );
     // generate random sequence
     // int val = rand() % (1 << 16);
     for ( i = 0; i < (len >> 1); i++) {
@@ -419,8 +419,8 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
 
         val = data_bin_start[index+2*i + 1] *256 + data_bin_start[index+2*i] ;
         val = val / 2;//(1 << sample_num) ; 
-        data[(i << 1)] = (val >> 8) & 0xff ;
-        data[(i << 1) + 1] = val & 0xff;
+        data[(i << 1)+ 1] = (val >> 8) & 0xff ;
+        data[(i << 1) ] = val & 0xff;
         //data[(i << 1)] = data_bin_start[index+2*i] & 0xff;
         //data[(i << 1) + 1] = data_bin_start[index+(2*i+1)] & 0xff;
     }
