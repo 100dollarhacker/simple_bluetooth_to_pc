@@ -418,7 +418,7 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
      //   ESP_LOGI(BT_AV_TAG, "DATA: ");
 
         val = data_bin_start[index+2*i + 1] *256 + data_bin_start[index+2*i] ;
-        val = val / 2;//(1 << sample_num) ; 
+        val = val / (1 << sample_num) ; 
         data[(i << 1)+ 1] = (val >> 8) & 0xff ;
         data[(i << 1) ] = val & 0xff;
         //data[(i << 1)] = data_bin_start[index+2*i] & 0xff;
@@ -433,7 +433,7 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
     if (index < index_before )
         sample_num++;
 
-    sample_num = sample_num %3; 
+    sample_num = sample_num %4; 
 
 
     return len;
