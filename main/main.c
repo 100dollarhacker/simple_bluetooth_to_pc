@@ -389,6 +389,7 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
     bt_app_work_dispatch(bt_app_av_sm_hdlr, event, param, sizeof(esp_a2d_cb_param_t), NULL);
 }
 
+#define SAMPLES_SIZE  (330000/2) // Since it's 16 bit it divided by two.
 
 //    size_t data_size = data_bin_end - data_bin_start;
 static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
@@ -418,6 +419,7 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
      //   ESP_LOGI(BT_AV_TAG, "DATA: ");
 
         val = data_bin_start[index+2*i + 1] *256 + data_bin_start[index+2*i] ;
+        val += data_bin_start[(index+2*i + 1 + 100000) % SAMPLES_SIZE] *256 + data_bin_start[(index+2*i + 100000)% SAMPLES_SIZE ] ;
         val = val / (1 << sample_num) ; 
         data[(i << 2)+ 1] = (val >> 8) & 0xff ;
         data[(i << 2) ] = val & 0xff;
@@ -430,7 +432,7 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
 
     index_before = index; 
 
-    index = (index + len) % (330000/2);
+    index = (index + len) % SAMPLES_SIZE;
 
     if (index < index_before )
         sample_num++;
