@@ -26,6 +26,8 @@
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
 
+#include "driver/gpio.h" // For PIN reading
+
 #define BT_AV_TAG               "BT_AV"
 #define BT_RC_CT_TAG            "RCCT"
 
@@ -111,8 +113,22 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
 extern const uint8_t data_bin_start[] asm("_binary_data_bin_start");
 extern const uint8_t data_bin_end[]   asm("_binary_data_bin_end");
 
+gpio_config_t io_conf = {
+    .pin_bit_mask = (1ULL << GPIO_NUM_4),
+    .mode = GPIO_MODE_INPUT,
+    .pull_down_en = GPIO_PULLDOWN_ENABLE,
+    .pull_up_en = GPIO_PULLUP_DISABLE,
+    .intr_type = GPIO_INTR_DISABLE
+};
+
+//int level = gpio_get_level(GPIO_NUM_4);
+
+
 void app_main(void)
 {
+
+    gpio_config(&io_conf);
+
     // Initialize NVS.
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -398,16 +414,29 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
         return 0;
     }
     
-    static char sample_num = 0 ;
-    static size_t index = 0;
+    static char sample_num = 0 ; // This controlls the volume should be changed to better name.
+    static int index = -1;
     size_t index_before;
     int i = 0;
     int16_t val = 1;
+    static int prev_level = 0 ;
+    //int change_detected = 0;
+    int level = gpio_get_level(GPIO_NUM_4);
+    
+    if (prev_level != level && level == 1) {
+        // change_detected = 1 ;
+        index = 0 ;
+        ESP_LOGI(BT_AV_TAG, "BANG!!!!! <lets make some noise!>");
+    }
+
+    // update state
+    prev_level = level; 
+
     //ESP_LOGI(BT_AV_TAG, "DATA0: %d:%d", data_bin_start[index+2*i], data_bin_start[index+2*i + 1]);
     
-    val = data_bin_start[index+2*i + 1] * 256 + data_bin_start[index+2*i] ;
+   // val = data_bin_start[index+2*i + 1] * 256 + data_bin_start[index+2*i] ;
     //ESP_LOGI(BT_AV_TAG, "VAL0 : %d  sample:%d", val, sample_num);
-    val = val / 2;// (1 << sample_num) ; 
+    val = 0;//val / 2;// (1 << sample_num) ; 
     //ESP_LOGI(BT_AV_TAG, "VAL2 : %d", val);
     //ESP_LOGI(BT_AV_TAG, "DATA2: %d:%d", (val >> 8) & 0xff , val & 0xff );
     // generate random sequence
@@ -417,9 +446,9 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
         //data[(i << 1) + 1] = (val >> 8) & 0xff;
 
      //   ESP_LOGI(BT_AV_TAG, "DATA: ");
-
-        val = data_bin_start[index+2*i + 1] *256 + data_bin_start[index+2*i] ;
-        val += data_bin_start[(index+2*i + 1 + 100000) % SAMPLES_SIZE] *256 + data_bin_start[(index+2*i + 100000)% SAMPLES_SIZE ] ;
+        if (index >= 0 )
+            val = data_bin_start[index+2*i + 1] *256 + data_bin_start[index+2*i] ;
+       // val += data_bin_start[(index+2*i + 1 + 100000) % SAMPLES_SIZE] *256 + data_bin_start[(index+2*i + 100000)% SAMPLES_SIZE ] ;
         val = val / (1 << sample_num) ; 
         data[(i << 2)+ 1] = (val >> 8) & 0xff ;
         data[(i << 2) ] = val & 0xff;
@@ -432,12 +461,16 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
 
     index_before = index; 
 
-    index = (index + len) % SAMPLES_SIZE;
+    if (index >= 0 )
+        index = (index + len) % SAMPLES_SIZE;
 
-    if (index < index_before )
-        sample_num++;
+    // Finished one beat
+   if (index < index_before ){
+        index = -1 ;    
+       // sample_num++;
+   }
 
-    sample_num = sample_num %4; 
+   //// sample_num = sample_num %4; 
 
 
     return len;
