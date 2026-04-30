@@ -114,7 +114,7 @@ extern const uint8_t data_bin_start[] asm("_binary_data_bin_start");
 extern const uint8_t data_bin_end[]   asm("_binary_data_bin_end");
 
 gpio_config_t io_conf = {
-    .pin_bit_mask = (1ULL << GPIO_NUM_4),
+    .pin_bit_mask = (1ULL << GPIO_NUM_4) | (1ULL << GPIO_NUM_5) ,//| (1ULL << GPIO_NUM_6),
     .mode = GPIO_MODE_INPUT,
     .pull_down_en = GPIO_PULLDOWN_ENABLE,
     .pull_up_en = GPIO_PULLUP_DISABLE,
@@ -405,7 +405,13 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
     bt_app_work_dispatch(bt_app_av_sm_hdlr, event, param, sizeof(esp_a2d_cb_param_t), NULL);
 }
 
-#define SAMPLES_SIZE  (300000/2) // Since it's 16 bit it divided by two.
+#define SAMPLES_SIZE1  (300000/2) // Since it's 16 bit it divided by two.
+#define SAMPLES_SIZE2  (450000/2) // Since it's 16 bit it divided by two.
+#define SAMPLES_NUM 6
+//TODO:: Should be taken from auto generated *.h file (it should be made from audio files we use in data.bin blob file)
+uint32_t samples_start[SAMPLES_NUM] = {0      ,350000};
+uint32_t samples_end[SAMPLES_NUM] =   {350000, 450000};
+
 
 //    size_t data_size = data_bin_end - data_bin_start;
 static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
@@ -415,22 +421,30 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
     }
     
     static char sample_num = 0 ; // This controlls the volume should be changed to better name.
-    static int index = -1;
-    size_t index_before;
+    static int index = -1, index2 = -1;
+    size_t index_before, index_before2;
     int i = 0;
     int16_t val = 1;
-    static int prev_level = 0 ;
-    //int change_detected = 0;
-    int level = gpio_get_level(GPIO_NUM_4);
+    static int prev_level1 = 0 ;
+    static int prev_level2 = 0 ;
+  //  static int prev_level3 = 0 ;
+    int level1 = gpio_get_level(GPIO_NUM_4);
+    int level2 = gpio_get_level(GPIO_NUM_5);
+   // int level3 = gpio_get_level(GPIO_NUM_6);
     
-    if (prev_level != level && level == 1) {
-        // change_detected = 1 ;
-        index = 0 ;
-        ESP_LOGI(BT_AV_TAG, "BANG!!!!! <lets make some noise!>");
+    if (prev_level1 != level1 && level1 == 1) {
+        index = samples_start[0] ;
+        ESP_LOGI(BT_AV_TAG, "BANG1111!!!!! <lets make some noise!>");
+    }
+
+    if (prev_level2 != level2 && level2 == 1) {
+        index2 = samples_start[1] ;
+        ESP_LOGI(BT_AV_TAG, "BANG222!!!!! <lets make some noise!>");
     }
 
     // update state
-    prev_level = level; 
+    prev_level1 = level1; 
+    prev_level2 = level2; 
 
     //ESP_LOGI(BT_AV_TAG, "DATA0: %d:%d", data_bin_start[index+2*i], data_bin_start[index+2*i + 1]);
     
@@ -446,9 +460,8 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
         //data[(i << 1) + 1] = (val >> 8) & 0xff;
 
      //   ESP_LOGI(BT_AV_TAG, "DATA: ");
-        if (index >= 0 )
-            val = data_bin_start[index+2*i + 1] *256 + data_bin_start[index+2*i] ;
-       // val += data_bin_start[(index+2*i + 1 + 100000) % SAMPLES_SIZE] *256 + data_bin_start[(index+2*i + 100000)% SAMPLES_SIZE ] ;
+        if (index  >= samples_start[0]) val = data_bin_start[index+2*i + 1 ] *256 + data_bin_start[index+2*i] ;
+       // if (index2 >= samples_start[1]) val = data_bin_start[(index2+2*i + 1 + samples_start[1]) % samples_end[1]] *256 + data_bin_start[(index2+2*i + samples_start[1]) % samples_end[1] ] ;
         val = val / (1 << sample_num) ; 
         data[(i << 2)+ 1] = (val >> 8) & 0xff ;
         data[(i << 2) ] = val & 0xff;
@@ -460,15 +473,14 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
 
 
     index_before = index; 
+    index_before2 = index2; 
 
-    if (index >= 0 )
-        index = (index + len) % SAMPLES_SIZE;
+    if (index >= 0 )  index  = (index + len)  % samples_end[0];
+    if (index2 >= 0 ) index2 = (index2 + len) % samples_end[1];
 
     // Finished one beat
-   if (index < index_before ){
-        index = -1 ;    
-       // sample_num++;
-   }
+   if (index  < index_before ) index = -1 ;    
+   if (index2 < index_before2 ) index2 = -1 ;    
 
    //// sample_num = sample_num %4; 
 
