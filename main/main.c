@@ -113,6 +113,9 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
 extern const uint8_t data_bin_start[] asm("_binary_data_bin_start");
 extern const uint8_t data_bin_end[]   asm("_binary_data_bin_end");
 
+extern const uint8_t data2_bin_start[] asm("_binary_data2_bin_start");
+extern const uint8_t data2_bin_end[]   asm("_binary_data2_bin_end");
+
 gpio_config_t io_conf = {
     .pin_bit_mask = (1ULL << GPIO_NUM_4) | (1ULL << GPIO_NUM_5) ,//| (1ULL << GPIO_NUM_6),
     .mode = GPIO_MODE_INPUT,
@@ -121,8 +124,21 @@ gpio_config_t io_conf = {
     .intr_type = GPIO_INTR_DISABLE
 };
 
-//int level = gpio_get_level(GPIO_NUM_4);
+int find_DATA_string(const uint8_t *data, size_t size)
+{
+    for (int i = 0 ; i  < 200; i++) {
+        if (data[i] == 0x64 && data[i+1] == 0x61 && data[i+2] == 0x74 && data[i+3] == 0x61) {
+            return i;
+        }
+    }
+    return -1;
+} 
 
+int get_audio_len(const uint8_t *data, int data_begin ) {
+
+
+      return( data[data_begin+4] + data[data_begin + 5] * 256 + data[data_begin+6] * 256 * 256 + data[data_begin+7] *256 *256 *256); 
+}
 
 void app_main(void)
 {
@@ -143,8 +159,24 @@ void app_main(void)
 
 
     size_t data_size = data_bin_end - data_bin_start;
+    size_t data2_size = data2_bin_end - data2_bin_start;
 
     ESP_LOGE(BT_AV_TAG, "GOT size: %d first bytes:%d,%d,%d", data_size, data_bin_start[0],data_bin_start[1],data_bin_start[2]);
+
+    // find DATA
+    int data_begin = find_DATA_string(data_bin_start, data_size);
+    int data2_begin = find_DATA_string(data2_bin_start, data2_size);
+
+    ESP_LOGE(BT_AV_TAG, "LOC: %d ", data_begin);
+    ESP_LOGE(BT_AV_TAG, "LOC2: %d ", data2_begin);
+    // Calculate length
+    if (data_begin!=-1) {
+        int audio_len = 0;
+        audio_len = get_audio_len(data_bin_start, data_begin);
+        ESP_LOGE(BT_AV_TAG, "AUDIO LEN: %d ", audio_len);
+        audio_len = get_audio_len(data2_bin_start, data2_begin);
+        ESP_LOGE(BT_AV_TAG, "AUDIO LEN: %d ", audio_len);
+    }
 
 
 
