@@ -140,6 +140,11 @@ int get_audio_len(const uint8_t *data, int data_begin ) {
       return( data[data_begin+4] + data[data_begin + 5] * 256 + data[data_begin+6] * 256 * 256 + data[data_begin+7] *256 *256 *256); 
 }
 
+
+
+#define SAMPLES_NUM 6
+uint32_t samples_start[SAMPLES_NUM] = {0};//{0      ,350000};
+uint32_t samples_end[SAMPLES_NUM] = {0};//  {350000, 450000};
 void app_main(void)
 {
 
@@ -173,8 +178,12 @@ void app_main(void)
     if (data_begin!=-1) {
         int audio_len = 0;
         audio_len = get_audio_len(data_bin_start, data_begin);
+        samples_start[0] = data_begin+6;
+        samples_end[0]= data_begin + 6 + audio_len;
         ESP_LOGE(BT_AV_TAG, "AUDIO LEN: %d ", audio_len);
         audio_len = get_audio_len(data2_bin_start, data2_begin);
+        samples_start[1] = data2_begin+6;
+        samples_end[1]= data2_begin + 6 + audio_len;
         ESP_LOGE(BT_AV_TAG, "AUDIO LEN: %d ", audio_len);
     }
 
@@ -437,12 +446,12 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
     bt_app_work_dispatch(bt_app_av_sm_hdlr, event, param, sizeof(esp_a2d_cb_param_t), NULL);
 }
 
-#define SAMPLES_SIZE1  (300000/2) // Since it's 16 bit it divided by two.
-#define SAMPLES_SIZE2  (450000/2) // Since it's 16 bit it divided by two.
-#define SAMPLES_NUM 6
+//#define SAMPLES_SIZE1  (300000/2) // Since it's 16 bit it divided by two.
+//#define SAMPLES_SIZE2  (450000/2) // Since it's 16 bit it divided by two.
+//#define SAMPLES_NUM 6
 //TODO:: Should be taken from auto generated *.h file (it should be made from audio files we use in data.bin blob file)
-uint32_t samples_start[SAMPLES_NUM] = {0      ,350000};
-uint32_t samples_end[SAMPLES_NUM] =   {350000, 450000};
+//uint32_t samples_start[SAMPLES_NUM] = {0};//{0      ,350000};
+//uint32_t samples_end[SAMPLES_NUM] = {0};//  {350000, 450000};
 
 
 //    size_t data_size = data_bin_end - data_bin_start;
@@ -453,8 +462,9 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
     }
     
     static char sample_num = 0 ; // This controlls the volume should be changed to better name.
-    static int index = -1, index2 = -1;
-    size_t index_before, index_before2;
+    static int index = 0;//-1;
+    size_t index_before;
+
     int i = 0;
     int16_t val = 1;
     static int prev_level1 = 0 ;
@@ -469,10 +479,10 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
         ESP_LOGI(BT_AV_TAG, "BANG1111!!!!! <lets make some noise!>");
     }
 
-    if (prev_level2 != level2 && level2 == 1) {
-        index2 = samples_start[1] ;
-        ESP_LOGI(BT_AV_TAG, "BANG222!!!!! <lets make some noise!>");
-    }
+    //if (prev_level2 != level2 && level2 == 1) {
+      //  index2 = samples_start[1] ;
+       // ESP_LOGI(BT_AV_TAG, "BANG222!!!!! <lets make some noise!>");
+    //}
 
     // update state
     prev_level1 = level1; 
@@ -492,7 +502,7 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
         //data[(i << 1) + 1] = (val >> 8) & 0xff;
 
      //   ESP_LOGI(BT_AV_TAG, "DATA: ");
-        if (index  >= samples_start[0]) val = data_bin_start[index+2*i + 1 ] *256 + data_bin_start[index+2*i] ;
+        if (index  >= samples_start[1]) val = data2_bin_start[index+2*i + 1 + samples_start[1] ] *256 + data2_bin_start[samples_start[1] + index+2*i] ;
        // if (index2 >= samples_start[1]) val = data_bin_start[(index2+2*i + 1 + samples_start[1]) % samples_end[1]] *256 + data_bin_start[(index2+2*i + samples_start[1]) % samples_end[1] ] ;
         val = val / (1 << sample_num) ; 
         data[(i << 2)+ 1] = (val >> 8) & 0xff ;
@@ -505,14 +515,16 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
 
 
     index_before = index; 
-    index_before2 = index2; 
+   // index_before2 = index2; 
 
-    if (index >= 0 )  index  = (index + len)  % samples_end[0];
-    if (index2 >= 0 ) index2 = (index2 + len) % samples_end[1];
+    if (index >= 0 )  index  = (index + len)  % samples_end[1];
+  //  if (index2 >= 0 ) index2 = (index2 + len) % samples_end[1];
 
     // Finished one beat
-   if (index  < index_before ) index = -1 ;    
-   if (index2 < index_before2 ) index2 = -1 ;    
+   if (index < index_before ){
+        index = 0;// -1 ;    
+       // sample_num++;
+   }
 
    //// sample_num = sample_num %4; 
 
