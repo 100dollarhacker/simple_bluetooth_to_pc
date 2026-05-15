@@ -140,6 +140,11 @@ int get_audio_len(const uint8_t *data, int data_begin ) {
       return( data[data_begin+4] + data[data_begin + 5] * 256 + data[data_begin+6] * 256 * 256 + data[data_begin+7] *256 *256 *256); 
 }
 
+
+
+#define SAMPLES_NUM 6
+uint32_t samples_start[SAMPLES_NUM] = {0};//{0      ,350000};
+uint32_t samples_end[SAMPLES_NUM] = {0};//  {350000, 450000};
 void app_main(void)
 {
 
@@ -173,8 +178,12 @@ void app_main(void)
     if (data_begin!=-1) {
         int audio_len = 0;
         audio_len = get_audio_len(data_bin_start, data_begin);
+        samples_start[0] = data_begin+6;
+        samples_end[0]= data_begin + 6 + audio_len;
         ESP_LOGE(BT_AV_TAG, "AUDIO LEN: %d ", audio_len);
         audio_len = get_audio_len(data2_bin_start, data2_begin);
+        samples_start[1] = data2_begin+6;
+        samples_end[1]= data2_begin + 6 + audio_len;
         ESP_LOGE(BT_AV_TAG, "AUDIO LEN: %d ", audio_len);
     }
 
@@ -437,12 +446,12 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
     bt_app_work_dispatch(bt_app_av_sm_hdlr, event, param, sizeof(esp_a2d_cb_param_t), NULL);
 }
 
-#define SAMPLES_SIZE1  (300000/2) // Since it's 16 bit it divided by two.
-#define SAMPLES_SIZE2  (450000/2) // Since it's 16 bit it divided by two.
-#define SAMPLES_NUM 6
+//#define SAMPLES_SIZE1  (300000/2) // Since it's 16 bit it divided by two.
+//#define SAMPLES_SIZE2  (450000/2) // Since it's 16 bit it divided by two.
+//#define SAMPLES_NUM 6
 //TODO:: Should be taken from auto generated *.h file (it should be made from audio files we use in data.bin blob file)
-uint32_t samples_start[SAMPLES_NUM] = {0      ,350000};
-uint32_t samples_end[SAMPLES_NUM] =   {350000, 450000};
+//uint32_t samples_start[SAMPLES_NUM] = {0};//{0      ,350000};
+//uint32_t samples_end[SAMPLES_NUM] = {0};//  {350000, 450000};
 
 
 //    size_t data_size = data_bin_end - data_bin_start;
@@ -452,18 +461,21 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
         return 0;
     }
     
-    static char sample_num = 0 ; // This controlls the volume should be changed to better name.
-    static int index = -1, index2 = -1;
+    static int16_t sample_num = 0 ; // This controlls the volume should be changed to better name.
+    static int16_t index = -1, index2 = -1;
     size_t index_before, index_before2;
-    int i = 0;
+    int16_t i = 0;
     int16_t val = 1;
-    static int prev_level1 = 0 ;
-    static int prev_level2 = 0 ;
+    static int16_t prev_level1 = 0 ;
+    static int16_t prev_level2 = 0 ;
   //  static int prev_level3 = 0 ;
     int level1 = gpio_get_level(GPIO_NUM_4);
     int level2 = gpio_get_level(GPIO_NUM_5);
    // int level3 = gpio_get_level(GPIO_NUM_6);
-    
+    if (index == -1 && index2 == -1) 
+        index = samples_start[0];
+
+
     if (prev_level1 != level1 && level1 == 1) {
         index = samples_start[0] ;
         ESP_LOGI(BT_AV_TAG, "BANG1111!!!!! <lets make some noise!>");
@@ -474,6 +486,7 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
         ESP_LOGI(BT_AV_TAG, "BANG222!!!!! <lets make some noise!>");
     }
 
+    //ESP_LOGI(BT_AV_TAG, "INDX:%d INDX2:%d ", index, index2);
     // update state
     prev_level1 = level1; 
     prev_level2 = level2; 
@@ -485,21 +498,30 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
     val = 0;//val / 2;// (1 << sample_num) ; 
     //ESP_LOGI(BT_AV_TAG, "VAL2 : %d", val);
     //ESP_LOGI(BT_AV_TAG, "DATA2: %d:%d", (val >> 8) & 0xff , val & 0xff );
+    //    ESP_LOGI(BT_AV_TAG, "index:%d sample_start[0]:%d", index, samples_start[0] );
     // generate random sequence
     // int val = rand() % (1 << 16);
     for ( i = 0; i < (len >> 2); i++) {
         //data[(i << 1)] = val & 0xff;
         //data[(i << 1) + 1] = (val >> 8) & 0xff;
+        //ESP_LOGI(BT_AV_TAG, "index:%d sample_start[0]", index, sample_start[0] );
+        //if (index  >= samples_start[0] && index + len < samples_end[0]) 
+        //    val =  (data_bin_start[index+2*i + 1 + samples_start[0] ]) * 256 + data_bin_start[index+2*i +  samples_start[0]] ;
+        //if (index2 >= samples_start[1]) 
+        //    val += (data2_bin_start[index2+2*i + 1 + samples_start[1]]) * 256 + data2_bin_start[index2+2*i + samples_start[1]] ;
 
-     //   ESP_LOGI(BT_AV_TAG, "DATA: ");
-        if (index  >= samples_start[0]) val = data_bin_start[index+2*i + 1 ] *256 + data_bin_start[index+2*i] ;
-       // if (index2 >= samples_start[1]) val = data_bin_start[(index2+2*i + 1 + samples_start[1]) % samples_end[1]] *256 + data_bin_start[(index2+2*i + samples_start[1]) % samples_end[1] ] ;
-        val = val / (1 << sample_num) ; 
+        //if (index  >= samples_start[0]) 
+        //    val = ((int16_t)data_bin_start[index+2*i +1]) * 256 + (int16_t)data_bin_start[index+2*i ] ;
+        if (index2 >= samples_start[1]) 
+            val = ((int16_t)data2_bin_start[index2+2*i + 2 ]) * 256 + (int16_t)data2_bin_start[index2+2*i+1] ;
+        
+        val = val;// / (1 << sample_num) ; 
         data[(i << 2)+ 1] = (val >> 8) & 0xff ;
         data[(i << 2) ] = val & 0xff;
         data[(i << 2)+ 3] = (val >> 8) & 0xff ;
         data[(i << 2)+2] = val & 0xff;
         //data[(i << 1)] = data_bin_start[index+2*i] & 0xff;
+        //ESP_LOGI(BT_AV_TAG, "index:%d val:%d:", index, val );
         //data[(i << 1) + 1] = data_bin_start[index+(2*i+1)] & 0xff;
     }
 
@@ -511,8 +533,13 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
     if (index2 >= 0 ) index2 = (index2 + len) % samples_end[1];
 
     // Finished one beat
-   if (index  < index_before ) index = -1 ;    
-   if (index2 < index_before2 ) index2 = -1 ;    
+   if (index  < index_before ) {
+        index2 = samples_start[1];//-1 ;
+        index = -1 ;
+   } else if (index2 < index_before2 ) {
+        index = samples_start[0] ;
+        index2 = -1;
+   }
 
    //// sample_num = sample_num %4; 
 
